@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>KlarDataLabs — AI Claims Upload</title>
+  <style>
+    :root{--accent:#0077CC;--bg:#f7f9fb;--card:#fff}
+    body{font-family:Inter,system-ui,Arial;background:var(--bg);margin:0;padding:24px;display:flex;justify-content:center}
+    .card{max-width:900px;width:100%;background:var(--card);border-radius:10px;box-shadow:0 8px 30px rgba(10,20,30,0.06);padding:20px}
+    header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+    header img{height:36px}
+    h1{margin:0;font-size:20px}
+    form{display:grid;gap:12px}
+    label{font-size:14px}
+    input,textarea,select{padding:10px;border-radius:6px;border:1px solid #e3e8ee;font-size:14px;width:100%}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .actions{display:flex;gap:8px;justify-content:flex-end}
+    button{background:var(--accent);color:white;border:none;padding:10px 14px;border-radius:8px;cursor:pointer}
+    small{color:#666}
+  </style>
+</head>
+<body>
+  <div class="card" role="main">
+    <header>
+      <a href="https://klardatalabs.com/" target="_blank" rel="noopener noreferrer">
+        <!-- If you have a logo URL, replace with <img src="..."> -->
+        <img src="https://klardatalabs.com/wp-content/uploads/2023/08/klardata-logo.png" alt="KlarDataLabs logo" onerror="this.style.display='none'">
+      </a>
+      <div>
+        <h1>AI-Based Claims Triage — Upload</h1>
+        <small>Upload incident images & details. We’ll analyze and route automatically.</small>
+      </div>
+    </header>
+
+    <form id="claimForm">
+      <div class="row">
+        <div>
+          <label>Claim ID</label>
+          <input name="claimId" placeholder="Optional claim ID" />
+        </div>
+        <div>
+          <label>Date of incident</label>
+          <input name="date" type="date" required />
+        </div>
+      </div>
+
+      <label>Customer name</label>
+      <input name="customerName" required placeholder="John Doe" />
+
+      <label>Customer email</label>
+      <input name="customerEmail" type="email" required placeholder="john@example.com" />
+
+      <label>Vehicle / Property ID</label>
+      <input name="vehicleId" placeholder="License / VIN / Asset ID" />
+
+      <label>Location (optional)</label>
+      <input name="location" placeholder="City, address or GPS" />
+
+      <label>Short description of incident</label>
+      <textarea name="description" rows="3" placeholder="What happened?" ></textarea>
+
+      <label>Upload photos (JPEG/PNG). Add multiple photos if needed.</label>
+      <input id="images" name="images" type="file" multiple accept="image/jpeg,image/png" required />
+
+      <div class="actions">
+        <small id="status" style="align-self:center;margin-right:auto"></small>
+        <button type="submit">Send to Claims</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const WEBHOOK_URL = 'https://YOUR_N8N_HOST/webhook/claims-triage'; // <-- replace
+
+    document.getElementById('claimForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const status = document.getElementById('status');
+      status.textContent = 'Preparing...';
+
+      const form = e.target;
+      const fd = new FormData();
+
+      // Add text fields
+      ['claimId','date','customerName','customerEmail','vehicleId','location','description']
+        .forEach(k => fd.append(k, form[k].value || ''));
+
+      // Add images
+      const input = document.getElementById('images');
+      if (!input.files.length) {
+        status.textContent = 'Please attach at least one image.';
+        return;
+      }
+      for (let i=0;i<input.files.length;i++){
+        fd.append('images', input.files[i], input.files[i].name);
+      }
+
+      try {
+        status.textContent = 'Uploading...';
+        const resp = await fetch(WEBHOOK_URL, {
+          method: 'POST',
+          body: fd,
+        });
+        if (!resp.ok) {
+          const text = await resp.text();
+          status.textContent = 'Upload failed: ' + resp.status;
+          console.error(text);
+        } else {
+          status.textContent = 'Uploaded successfully — you will receive an email.';
+          form.reset();
+        }
+      } catch (err) {
+        console.error(err);
+        status.textContent = 'Network error — try again.';
+      }
+    });
+  </script>
+</body>
+</html>
